@@ -1,0 +1,1699 @@
+
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mridha Smart Home Pro Controller</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter & Hind Siliguri -->
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDKs (v9.22.0) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985',
+                            accent: '#10b981'
+                        },
+                        darkbg: '#090d16',
+                        cardbg: '#111827'
+                    },
+                    fontFamily: {
+                        sans: ['Hind Siliguri', 'Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Hind Siliguri', 'Inter', sans-serif;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            background-color: #030712;
+            background-image: 
+                radial-gradient(at 10% 10%, rgba(14, 165, 233, 0.15) 0px, transparent 50%),
+                radial-gradient(at 90% 90%, rgba(168, 85, 247, 0.12) 0px, transparent 50%);
+        }
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]:focus {
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: rgba(15, 23, 42, 0.8);
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+        }
+        input[type=range]::-webkit-slider-thumb {
+            height: 22px;
+            width: 22px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -7px;
+            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.5), inset 0 2px 3px rgba(255, 255, 255, 0.6);
+            border: 2px solid #0f172a;
+            transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        input[type=range]::-webkit-slider-thumb:active {
+            transform: scale(1.25);
+        }
+        
+        .glass-card-3d {
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.75), rgba(15, 23, 42, 0.9));
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 
+                0 10px 25px -5px rgba(0, 0, 0, 0.6),
+                inset 0 1px 1px rgba(255, 255, 255, 0.15);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes spin-fan {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin-fast {
+            animation: spin-fan 0.6s linear infinite;
+        }
+        .animate-spin-slow {
+            animation: spin-fan 1.5s linear infinite;
+        }
+
+        .glow-light-active {
+            box-shadow: 0 0 25px rgba(251, 191, 36, 0.35);
+            border-color: rgba(251, 191, 36, 0.5) !important;
+        }
+        .glow-fan-active {
+            box-shadow: 0 0 25px rgba(6, 182, 212, 0.35);
+            border-color: rgba(6, 182, 212, 0.5) !important;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        @keyframes radar-pulse {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.15); opacity: 0.3; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+        .radar-active {
+            animation: radar-pulse 1.2s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex justify-center items-center p-0 sm:p-4 select-none">
+
+    <!-- Mobile Frame Container -->
+    <div class="w-full max-w-md h-screen sm:h-[900px] bg-slate-950 sm:rounded-[40px] shadow-2xl flex flex-col overflow-hidden border-0 sm:border-4 border-slate-800 relative">
+
+        <!-- AUTH OVERLAY / LOGIN VIEW -->
+        <div id="auth-overlay" class="absolute inset-0 bg-slate-950/95 backdrop-blur-2xl z-50 flex flex-col justify-center items-center p-6 text-center space-y-6">
+            <div class="w-20 h-20 bg-sky-500/10 border border-sky-400/30 rounded-3xl flex items-center justify-center text-sky-400 text-3xl shadow-[0_0_30px_rgba(56,189,248,0.2)]">
+                <i class="fa-solid fa-house-signal"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl font-extrabold text-white tracking-wide">MRIDHA SMART HOME</h1>
+                <p class="text-xs text-slate-400 mt-1">কাস্টম ডিভাইস কানেক্ট এবং কন্ট্রোল করার জন্য গুগল দিয়ে লগইন করুন</p>
+            </div>
+
+            <button onclick="loginWithGoogle()" class="w-full bg-white hover:bg-slate-100 text-slate-900 font-bold py-3.5 px-4 rounded-2xl flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all">
+                <svg width="20" height="20" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                </svg>
+                Continue with Google
+            </button>
+
+            <div id="auth-status" class="text-xs text-amber-400 font-mono"></div>
+        </div>
+
+        <!-- Top Status Bar & ESP8266 Live Diagnostics Header -->
+        <header class="bg-slate-900/90 backdrop-blur-xl px-4 pt-3 pb-2 border-b border-slate-800/80 z-20">
+            <div class="flex justify-between items-center mb-1">
+                <div class="flex items-center space-x-2">
+                    <span class="relative flex h-2.5 w-2.5">
+                      <span id="conn-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span id="conn-dot" class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                    </span>
+                    <span id="brand-header-txt" class="text-xs font-bold tracking-wider text-sky-400 uppercase">JOY / MRIDHA PRO IOT</span>
+                </div>
+                <div class="flex items-center space-x-2 text-xs text-slate-400">
+                    <span id="conn-status-badge" class="flex items-center gap-1 text-[11px] bg-emerald-950/60 border border-emerald-800/50 px-2.5 py-0.5 rounded-full text-emerald-300 font-semibold">
+                        Online (Cloud)
+                    </span>
+                    <button onclick="logoutUser()" title="Logout" class="text-rose-400 hover:text-rose-300 ml-1 text-xs"><i class="fa-solid fa-right-from-bracket"></i></button>
+                </div>
+            </div>
+
+            <!-- Hardware Telemetry Grid -->
+            <div class="grid grid-cols-4 gap-1 mt-2 bg-slate-950/90 p-2 rounded-xl text-center border border-slate-800/90 text-[10px]">
+                <div class="flex flex-col">
+                    <span class="text-slate-400">ZCD (D1)</span>
+                    <span id="zcd-status" class="font-bold text-emerald-400"><i class="fa-solid fa-bolt"></i> --Hz</span>
+                </div>
+                <div class="flex flex-col border-l border-slate-800">
+                    <span class="text-slate-400">তাপমাত্রা (D4)</span>
+                    <span id="temp-display" class="font-bold text-amber-400">-- °C</span>
+                </div>
+                <div class="flex flex-col border-l border-slate-800">
+                    <span class="text-slate-400">ADC (A0)</span>
+                    <span id="adc-live" class="font-mono text-cyan-400">-- RAW</span>
+                </div>
+                <div class="flex flex-col border-l border-slate-800">
+                    <span class="text-slate-400">মোট লোড</span>
+                    <span id="power-live" class="font-bold text-purple-400">0 Watts</span>
+                </div>
+            </div>
+
+            <!-- IR Learning Safety Banner -->
+            <div id="safety-banner" class="hidden mt-2 bg-amber-500/15 border border-amber-500/40 px-3 py-1.5 rounded-xl flex items-center justify-between text-[11px] text-amber-300 font-semibold animate-pulse">
+                <span><i class="fa-solid fa-shield-halved text-amber-400 mr-1"></i> IR লার্নিং মোড সক্রিয় (সুইচ লকড)</span>
+                <button onclick="toggleIRSafetyLock(false)" class="text-[10px] bg-amber-500/30 border border-amber-400/50 text-amber-200 px-2 py-0.5 rounded-md hover:bg-amber-500/50">আনলক</button>
+            </div>
+        </header>
+
+        <!-- Main Viewport / Pages -->
+        <main id="main-content" class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-4 pb-36">
+
+            <!-- PAGE 1: DASHBOARD / MAIN CONTROLS -->
+            <section id="page-dashboard" class="page-content space-y-3.5">
+                <div class="flex justify-between items-center px-1">
+                    <h2 class="text-sm font-bold text-slate-100 flex items-center gap-2">
+                        <i class="fa-solid fa-cube text-sky-400 drop-shadow-[0_0_8px_rgba(56,189,248,0.6)]"></i> কাস্টম ডিভাইস ড্যাশবোর্ড
+                    </h2>
+                    <span id="user-role-badge" class="text-[10px] bg-emerald-950/80 text-emerald-300 border border-emerald-500/30 px-3 py-0.5 rounded-full font-semibold shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                        Connecting...
+                    </span>
+                </div>
+
+                <!-- LIGHT 1 CARD -->
+                <div id="card-light1" class="glass-card-3d rounded-2xl p-4 transition-all relative overflow-hidden">
+                    <div class="flex justify-between items-center mb-3">
+                        <div class="flex items-center gap-3.5">
+                            <div id="light1-icon-bg" class="w-11 h-11 rounded-2xl bg-slate-800/90 border border-slate-700/80 flex items-center justify-center text-slate-400 transition-all duration-300 shadow-inner">
+                                <i class="fa-solid fa-lightbulb text-xl"></i>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h3 class="font-bold text-slate-100 text-sm tracking-wide">লাইট ১ (D5 Pin)</h3>
+                                    <span id="light1-timer-badge" class="hidden text-[10px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full animate-pulse">
+                                        <i class="fa-solid fa-clock mr-1"></i><span id="light1-timer-txt">--:--</span>
+                                    </span>
+                                </div>
+                                <p class="text-[11px] text-slate-400">Phase Cutting AC Dimmer (1%-100%)</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <button onclick="quickOpenTimerModal('light1')" class="w-9 h-9 rounded-xl bg-slate-900/80 border border-slate-700 text-slate-400 hover:text-amber-400 active:scale-90 transition-all flex items-center justify-center shadow-md">
+                                <i class="fa-solid fa-stopwatch text-sm"></i>
+                            </button>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="light1-toggle" class="sr-only peer" onchange="toggleDevice('light1')">
+                                <div class="w-11 h-6 bg-slate-950 border border-slate-700/80 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-emerald-500 peer-checked:to-teal-400"></div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1.5 pt-1">
+                        <div class="flex justify-between text-xs text-slate-300 font-medium">
+                            <span>ডিমার ব্রাইটনেস</span>
+                            <span id="light1-val" class="font-bold font-mono text-sky-400">0%</span>
+                        </div>
+                        <input type="range" id="light1-slider" min="0" max="100" value="0" oninput="updateSlider('light1', this.value)">
+                    </div>
+                </div>
+
+                <!-- LIGHT 2 CARD -->
+                <div id="card-light2" class="glass-card-3d rounded-2xl p-4 transition-all relative overflow-hidden">
+                    <div class="flex justify-between items-center mb-3">
+                        <div class="flex items-center gap-3.5">
+                            <div id="light2-icon-bg" class="w-11 h-11 rounded-2xl bg-slate-800/90 border border-slate-700/80 flex items-center justify-center text-slate-400 transition-all duration-300 shadow-inner">
+                                <i class="fa-regular fa-lightbulb text-xl"></i>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h3 class="font-bold text-slate-100 text-sm tracking-wide">লাইট ২ (D6 Pin)</h3>
+                                    <span id="light2-timer-badge" class="hidden text-[10px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full animate-pulse">
+                                        <i class="fa-solid fa-clock mr-1"></i><span id="light2-timer-txt">--:--</span>
+                                    </span>
+                                </div>
+                                <p class="text-[11px] text-slate-400">Phase Cutting AC Dimmer (1%-100%)</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <button onclick="quickOpenTimerModal('light2')" class="w-9 h-9 rounded-xl bg-slate-900/80 border border-slate-700 text-slate-400 hover:text-amber-400 active:scale-90 transition-all flex items-center justify-center shadow-md">
+                                <i class="fa-solid fa-stopwatch text-sm"></i>
+                            </button>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="light2-toggle" class="sr-only peer" onchange="toggleDevice('light2')">
+                                <div class="w-11 h-6 bg-slate-950 border border-slate-700/80 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-emerald-500 peer-checked:to-teal-400"></div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1.5 pt-1">
+                        <div class="flex justify-between text-xs text-slate-300 font-medium">
+                            <span>ডিমার ব্রাইটনেস</span>
+                            <span id="light2-val" class="font-bold font-mono text-sky-400">0%</span>
+                        </div>
+                        <input type="range" id="light2-slider" min="0" max="100" value="0" oninput="updateSlider('light2', this.value)">
+                    </div>
+                </div>
+
+                <!-- FAN 1 CARD -->
+                <div id="card-fan1" class="glass-card-3d rounded-2xl p-4 transition-all relative overflow-hidden border-l-4 border-l-cyan-500">
+                    <div class="flex justify-between items-center mb-3">
+                        <div class="flex items-center gap-3.5">
+                            <div id="fan1-icon-bg" class="w-11 h-11 rounded-2xl bg-slate-800/90 border border-slate-700/80 flex items-center justify-center text-slate-400 transition-all duration-300 shadow-inner">
+                                <i id="fan1-icon" class="fa-solid fa-fan text-xl"></i>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h3 class="font-bold text-slate-100 text-sm tracking-wide">ফ্যান ১ (D7 Pin)</h3>
+                                    <span id="fan1-auto-badge" class="hidden text-[9px] font-bold bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded border border-amber-500/30">AUTO</span>
+                                    <span id="fan1-timer-badge" class="hidden text-[10px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full animate-pulse">
+                                        <i class="fa-solid fa-clock mr-1"></i><span id="fan1-timer-txt">--:--</span>
+                                    </span>
+                                </div>
+                                <p class="text-[11px] text-slate-400">স্মুথ সফট-স্টার্ট ডিমার</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <button onclick="quickOpenTimerModal('fan1')" class="w-9 h-9 rounded-xl bg-slate-900/80 border border-slate-700 text-slate-400 hover:text-amber-400 active:scale-90 transition-all flex items-center justify-center shadow-md">
+                                <i class="fa-solid fa-stopwatch text-sm"></i>
+                            </button>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="fan1-toggle" class="sr-only peer" onchange="toggleDevice('fan1')">
+                                <div class="w-11 h-6 bg-slate-950 border border-slate-700/80 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-emerald-500 peer-checked:to-teal-400"></div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2 pt-1">
+                        <div class="flex justify-between items-center text-xs text-slate-300 font-medium">
+                            <span>ফ্যান স্পিড: <strong id="fan1-val" class="font-mono text-cyan-400">0%</strong></span>
+                            <div class="flex items-center gap-1.5 text-[10px] text-slate-300 bg-slate-950/70 px-2 py-1 rounded-lg border border-slate-800 shadow-inner">
+                                <span>সফট-স্টার্ট (৫-৭ সে:)</span>
+                                <input type="checkbox" id="fan1-softstart" checked onchange="toggleSoftStart('fan1', this.checked)" class="accent-cyan-500 rounded">
+                            </div>
+                        </div>
+                        <input type="range" id="fan1-slider" min="0" max="100" value="0" oninput="updateSlider('fan1', this.value)">
+                    </div>
+                </div>
+
+                <!-- FAN 2 CARD -->
+                <div id="card-fan2" class="glass-card-3d rounded-2xl p-4 transition-all relative overflow-hidden border-l-4 border-l-cyan-500">
+                    <div class="flex justify-between items-center mb-3">
+                        <div class="flex items-center gap-3.5">
+                            <div id="fan2-icon-bg" class="w-11 h-11 rounded-2xl bg-slate-800/90 border border-slate-700/80 flex items-center justify-center text-slate-400 transition-all duration-300 shadow-inner">
+                                <i id="fan2-icon" class="fa-solid fa-fan text-xl"></i>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h3 class="font-bold text-slate-100 text-sm tracking-wide">ফ্যান ২ (D8 Pin)</h3>
+                                    <span id="fan2-auto-badge" class="hidden text-[9px] font-bold bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded border border-amber-500/30">AUTO</span>
+                                    <span id="fan2-timer-badge" class="hidden text-[10px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full animate-pulse">
+                                        <i class="fa-solid fa-clock mr-1"></i><span id="fan2-timer-txt">--:--</span>
+                                    </span>
+                                </div>
+                                <p class="text-[11px] text-slate-400">স্মুথ সফট-স্টার্ট ডিমার</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <button onclick="quickOpenTimerModal('fan2')" class="w-9 h-9 rounded-xl bg-slate-900/80 border border-slate-700 text-slate-400 hover:text-amber-400 active:scale-90 transition-all flex items-center justify-center shadow-md">
+                                <i class="fa-solid fa-stopwatch text-sm"></i>
+                            </button>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="fan2-toggle" class="sr-only peer" onchange="toggleDevice('fan2')">
+                                <div class="w-11 h-6 bg-slate-950 border border-slate-700/80 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-emerald-500 peer-checked:to-teal-400"></div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2 pt-1">
+                        <div class="flex justify-between items-center text-xs text-slate-300 font-medium">
+                            <span>ফ্যান স্পিড: <strong id="fan2-val" class="font-mono text-cyan-400">0%</strong></span>
+                            <div class="flex items-center gap-1.5 text-[10px] text-slate-300 bg-slate-950/70 px-2 py-1 rounded-lg border border-slate-800 shadow-inner">
+                                <span>সফট-স্টার্ট (৫-৭ সে:)</span>
+                                <input type="checkbox" id="fan2-softstart" checked onchange="toggleSoftStart('fan2', this.checked)" class="accent-cyan-500 rounded">
+                            </div>
+                        </div>
+                        <input type="range" id="fan2-slider" min="0" max="100" value="0" oninput="updateSlider('fan2', this.value)">
+                    </div>
+                </div>
+
+                <!-- REAL-TIME ZCD Hz GRAPH MONITOR -->
+                <div class="glass-card-3d rounded-2xl p-3.5 space-y-2">
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="font-bold text-slate-200 flex items-center gap-1.5"><i class="fa-solid fa-wave-square text-emerald-400"></i> Zero-Crossing Pulse Monitor (D1)</span>
+                        <span id="zcd-hz-badge" class="text-[10px] font-semibold text-emerald-400 bg-emerald-950/80 px-2.5 py-0.5 rounded-full border border-emerald-500/30">-- Hz</span>
+                    </div>
+                    <canvas id="zcdCanvas" class="w-full h-14 bg-slate-950 rounded-xl border border-slate-800/80 shadow-inner"></canvas>
+                </div>
+            </section>
+
+            <!-- PAGE 2: APP RMT / VIRTUAL APPLIANCE REMOTE CONTROL -->
+            <section id="page-rmt-app" class="page-content hidden space-y-4 pb-6">
+                <div class="flex justify-between items-center px-1">
+                    <h2 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-mobile-screen-button text-sky-400"></i> অ্যাপ রিমোট কন্ট্রোল (TV & AC RMT)
+                    </h2>
+                    <span class="text-[10px] bg-sky-950 text-sky-300 border border-sky-800 px-2 py-0.5 rounded-full">Live App RMT</span>
+                </div>
+
+                <!-- Appliance Selector Tabs -->
+                <div class="flex bg-slate-900 p-1 rounded-xl text-xs font-semibold border border-slate-800">
+                    <button onclick="switchApplianceTab('ac')" id="tab-rmt-ac" class="flex-1 py-2 rounded-lg bg-sky-600 text-white transition-all"><i class="fa-solid fa-snowflake"></i> স্মার্ট এসি (AC)</button>
+                    <button onclick="switchApplianceTab('tv')" id="tab-rmt-tv" class="flex-1 py-2 rounded-lg text-slate-400 transition-all"><i class="fa-solid fa-tv"></i> স্মার্ট টিভি (TV)</button>
+                </div>
+
+                <!-- AC VIRTUAL REMOTE PANEL -->
+                <div id="rmt-panel-ac" class="glass-card-3d rounded-2xl p-4 space-y-4 border border-sky-500/20">
+                    <div class="flex justify-between items-center bg-slate-950/80 p-3 rounded-xl border border-slate-800">
+                        <div>
+                            <span class="text-[10px] text-slate-400 block">AC Status & Temp</span>
+                            <span id="app-ac-temp-display" class="text-xl font-bold text-sky-400">24 °C</span>
+                        </div>
+                        <div class="text-right">
+                            <span id="app-ac-mode-badge" class="text-[10px] bg-sky-900/60 text-sky-300 border border-sky-700 px-2 py-0.5 rounded-full">COOL MODE</span>
+                            <span id="app-ac-power-badge" class="text-[10px] bg-emerald-950 text-emerald-400 px-2 py-0.5 rounded-full ml-1">ON</span>
+                        </div>
+                    </div>
+
+                    <!-- AC Remote Buttons Grid -->
+                    <div class="grid grid-cols-3 gap-2">
+                        <button onclick="appAcCommand('power')" class="bg-rose-900/40 border border-rose-700/60 text-rose-200 py-3 rounded-xl text-xs font-bold active:scale-95 transition-transform col-span-3 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-power-off"></i> AC Power Toggle
+                        </button>
+                        <button onclick="appAcCommand('temp_up')" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 py-2.5 rounded-xl text-xs font-bold active:scale-95 flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-chevron-up"></i> Temp (+)
+                        </button>
+                        <button onclick="appAcCommand('temp_down')" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 py-2.5 rounded-xl text-xs font-bold active:scale-95 flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-chevron-down"></i> Temp (-)
+                        </button>
+                        <button onclick="appAcCommand('mode')" class="bg-sky-900/40 border border-sky-700 text-sky-200 py-2.5 rounded-xl text-xs font-bold active:scale-95 flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-rotate"></i> Mode Change
+                        </button>
+                        <button onclick="appAcCommand('fan')" class="bg-cyan-900/40 border border-cyan-700 text-cyan-200 py-2.5 rounded-xl text-xs font-bold active:scale-95 col-span-3 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-fan"></i> Fan Speed Cycle
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TV VIRTUAL REMOTE PANEL -->
+                <div id="rmt-panel-tv" class="glass-card-3d rounded-2xl p-4 space-y-4 border border-purple-500/20 hidden">
+                    <div class="flex justify-between items-center bg-slate-950/80 p-3 rounded-xl border border-slate-800">
+                        <div>
+                            <span class="text-[10px] text-slate-400 block">TV Status & Channel</span>
+                            <span id="app-tv-ch-display" class="text-sm font-bold text-purple-400">CH 05 (Star Movies)</span>
+                        </div>
+                        <div class="text-right">
+                            <span id="app-tv-vol-display" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded">Vol: 18</span>
+                        </div>
+                    </div>
+
+                    <!-- TV Remote Buttons Grid -->
+                    <div class="grid grid-cols-3 gap-2">
+                        <button onclick="appTvCommand('power')" class="bg-rose-900/40 border border-rose-700/60 text-rose-200 py-3 rounded-xl text-xs font-bold active:scale-95 transition-transform col-span-3 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-power-off"></i> TV Power Toggle
+                        </button>
+                        <button onclick="appTvCommand('vol_up')" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 py-2.5 rounded-xl text-xs font-bold active:scale-95">
+                            <i class="fa-solid fa-volume-high"></i> Vol (+)
+                        </button>
+                        <button onclick="appTvCommand('mute')" class="bg-amber-900/40 border border-amber-700 text-amber-200 py-2.5 rounded-xl text-xs font-bold active:scale-95">
+                            <i class="fa-solid fa-volume-xmark"></i> Mute
+                        </button>
+                        <button onclick="appTvCommand('vol_down')" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 py-2.5 rounded-xl text-xs font-bold active:scale-95">
+                            <i class="fa-solid fa-volume-low"></i> Vol (-)
+                        </button>
+                        <button onclick="appTvCommand('ch_up')" class="bg-purple-900/40 border border-purple-700 text-purple-200 py-2.5 rounded-xl text-xs font-bold active:scale-95">
+                            <i class="fa-solid fa-chevron-up"></i> CH (+)
+                        </button>
+                        <button onclick="appTvCommand('source')" class="bg-sky-900/40 border border-sky-700 text-sky-200 py-2.5 rounded-xl text-xs font-bold active:scale-95">
+                            <i class="fa-solid fa-desktop"></i> Source
+                        </button>
+                        <button onclick="appTvCommand('ch_down')" class="bg-purple-900/40 border border-purple-700 text-purple-200 py-2.5 rounded-xl text-xs font-bold active:scale-95">
+                            <i class="fa-solid fa-chevron-down"></i> CH (-)
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PAGE 3: PHYSICAL ADC BUTTON LEARNING MATRIX -->
+            <section id="page-adc-matrix" class="page-content hidden space-y-4 pb-6">
+                <div class="flex justify-between items-center px-1">
+                    <h2 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-gamepad text-cyan-400"></i> A0 বাটুন লার্নিং ম্যাট্রিক্স
+                    </h2>
+                    <span class="text-[10px] bg-cyan-950 text-cyan-300 border border-cyan-800 px-2 py-0.5 rounded-full">Calibration</span>
+                </div>
+
+                <div class="glass-card-3d rounded-2xl p-4 space-y-3">
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        একটি মাত্র <strong>A0 (ADC)</strong> পিন দিয়ে আপনার দেওয়া ফিজিক্যাল সুইচে <strong>সিলেকশন ও অ্যাকশন</strong> লজিক কাজ করবে।
+                    </p>
+
+                    <!-- Real-Time ADC Live Value Stream -->
+                    <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800 flex justify-between items-center">
+                        <div>
+                            <span class="text-[11px] text-slate-400 block">বর্তমান A0 এনালগ মান (Live Stream)</span>
+                            <span id="adc-live-wizard" class="text-xl font-mono font-bold text-amber-400">-- RAW</span>
+                        </div>
+                        <span id="adc-detected-label" class="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700">Idle (No Press)</span>
+                    </div>
+
+                    <!-- Selected Target Highlight Bar -->
+                    <div class="bg-sky-950/40 border border-sky-800/50 p-3 rounded-xl flex items-center justify-between text-xs">
+                        <span class="text-sky-300 font-semibold"><i class="fa-solid fa-hand-pointer"></i> বর্তমান সিলেকশন মোড:</span>
+                        <span id="matrix-active-selection" class="font-bold bg-sky-500 text-slate-950 px-2.5 py-0.5 rounded-full">লাইট ১ (D5)</span>
+                    </div>
+
+                    <!-- Button Mapping Calibration Table -->
+                    <div class="space-y-2 pt-1">
+                        <h4 class="text-xs font-bold text-slate-300 border-b border-slate-800 pb-1">বাটন থ্রেশহোল্ড টিউনিং:</h4>
+
+                        <!-- SELECTOR BUTTON -->
+                        <div class="flex justify-between items-center bg-slate-900/90 p-2.5 rounded-xl text-xs border border-slate-800">
+                            <div>
+                                <div class="font-bold text-slate-200"><i class="fa-solid fa-rotate text-purple-400"></i> ১. সিলেকশন বাটন</div>
+                                <div class="text-[10px] text-slate-400">Light1 ➔ Light2 ➔ Fan1 ➔ Fan2 ➔ Timer</div>
+                            </div>
+                            <div class="text-right">
+                                <span id="adc-val-select" class="font-mono text-amber-400 block">120 ± 20</span>
+                                <button onclick="startAdcCalibrate('select')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-0.5 rounded text-[10px] mt-1">Calibrate</button>
+                            </div>
+                        </div>
+
+                        <!-- TOGGLE BUTTON -->
+                        <div class="flex justify-between items-center bg-slate-900/90 p-2.5 rounded-xl text-xs border border-slate-800">
+                            <div>
+                                <div class="font-bold text-slate-200"><i class="fa-solid fa-power-off text-emerald-400"></i> ২. অন/অফ টগল বাটন</div>
+                                <div class="text-[10px] text-slate-400">সিলেক্টেড ডিভাইস চালু/বন্ধ করবে</div>
+                            </div>
+                            <div class="text-right">
+                                <span id="adc-val-toggle" class="font-mono text-amber-400 block">340 ± 20</span>
+                                <button onclick="startAdcCalibrate('toggle')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-0.5 rounded text-[10px] mt-1">Calibrate</button>
+                            </div>
+                        </div>
+
+                        <!-- PLUS BUTTON -->
+                        <div class="flex justify-between items-center bg-slate-900/90 p-2.5 rounded-xl text-xs border border-slate-800">
+                            <div>
+                                <div class="font-bold text-slate-200"><i class="fa-solid fa-plus text-sky-400"></i> ৩. স্পিড / ডিমার (+) বাটন</div>
+                                <div class="text-[10px] text-slate-400">ব্রাইটনেস বা ফ্যান স্পিড বাড়াবে</div>
+                            </div>
+                            <div class="text-right">
+                                <span id="adc-val-plus" class="font-mono text-amber-400 block">520 ± 20</span>
+                                <button onclick="startAdcCalibrate('plus')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-0.5 rounded text-[10px] mt-1">Calibrate</button>
+                            </div>
+                        </div>
+
+                        <!-- MINUS BUTTON -->
+                        <div class="flex justify-between items-center bg-slate-900/90 p-2.5 rounded-xl text-xs border border-slate-800">
+                            <div>
+                                <div class="font-bold text-slate-200"><i class="fa-solid fa-minus text-rose-400"></i> ৪. স্পিড / ডিমার (-) বাটন</div>
+                                <div class="text-[10px] text-slate-400">ব্রাইটনেস বা ফ্যান স্পিড কমাবে</div>
+                            </div>
+                            <div class="text-right">
+                                <span id="adc-val-minus" class="font-mono text-amber-400 block">710 ± 20</span>
+                                <button onclick="startAdcCalibrate('minus')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-0.5 rounded text-[10px] mt-1">Calibrate</button>
+                            </div>
+                        </div>
+
+                        <!-- TIMER BUTTON -->
+                        <div class="flex justify-between items-center bg-slate-900/90 p-2.5 rounded-xl text-xs border border-slate-800">
+                            <div>
+                                <div class="font-bold text-slate-200"><i class="fa-solid fa-stopwatch text-amber-400"></i> ৫. টাইমার (+১০ মি:) বাটন</div>
+                                <div class="text-[10px] text-slate-400">প্রতি চাপে ১০ মিনিট টাইমার যোগ হবে</div>
+                            </div>
+                            <div class="text-right">
+                                <span id="adc-val-timer" class="font-mono text-amber-400 block">890 ± 20</span>
+                                <button onclick="startAdcCalibrate('timer')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-0.5 rounded text-[10px] mt-1">Calibrate</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Virtual Physical Hardware Simulator -->
+                    <div class="pt-3 border-t border-slate-800">
+                        <span class="text-xs text-slate-400 block mb-2 font-semibold">ফিজিক্যাল বাটন টেস্ট ডেমো প্রেস:</span>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button onclick="simPhysicalButtonPress('select')" class="bg-purple-900/50 border border-purple-700 text-purple-200 py-2 rounded-xl text-xs font-bold active:scale-95 transition-transform">
+                                <i class="fa-solid fa-rotate"></i> Select
+                            </button>
+                            <button onclick="simPhysicalButtonPress('toggle')" class="bg-emerald-900/50 border border-emerald-700 text-emerald-200 py-2 rounded-xl text-xs font-bold active:scale-95 transition-transform">
+                                <i class="fa-solid fa-power-off"></i> Toggle
+                            </button>
+                            <button onclick="simPhysicalButtonPress('plus')" class="bg-sky-900/50 border border-sky-700 text-sky-200 py-2 rounded-xl text-xs font-bold active:scale-95 transition-transform">
+                                <i class="fa-solid fa-plus"></i> Dimmer +
+                            </button>
+                            <button onclick="simPhysicalButtonPress('minus')" class="bg-rose-900/50 border border-rose-700 text-rose-200 py-2 rounded-xl text-xs font-bold active:scale-95 transition-transform">
+                                <i class="fa-solid fa-minus"></i> Dimmer -
+                            </button>
+                            <button onclick="simPhysicalButtonPress('timer')" class="bg-amber-900/50 border border-amber-700 text-amber-200 py-2 rounded-xl text-xs font-bold col-span-2 active:scale-95 transition-transform">
+                                <i class="fa-solid fa-stopwatch"></i> Timer +10 Min
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PAGE 4: AUTO TEMPERATURE FAN CONTROL -->
+            <section id="page-auto-temp" class="page-content hidden space-y-4 pb-6">
+                <div class="flex justify-between items-center px-1">
+                    <h2 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-temperature-arrow-up text-amber-400"></i> ডায়নামিক অটো ফ্যান কার্ভ
+                    </h2>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="auto-temp-master" class="sr-only peer" onchange="toggleAutoTempMode()" checked>
+                        <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                    </label>
+                </div>
+
+                <!-- Dynamic Ramp Curve Canvas -->
+                <div class="glass-card-3d rounded-2xl p-4 space-y-2">
+                    <div class="flex justify-between text-xs text-slate-300">
+                        <span>স্পিড ট্রানজিশন কার্ভ (Graph)</span>
+                        <span class="text-amber-400 font-bold" id="auto-calc-speed-txt">0% Speed</span>
+                    </div>
+                    <canvas id="tempCurveCanvas" class="w-full h-28 bg-slate-950 rounded-xl border border-slate-800"></canvas>
+                </div>
+
+                <!-- Threshold Config Cards -->
+                <div class="glass-card-3d rounded-2xl p-4 space-y-4">
+                    <h3 class="font-bold text-xs text-slate-200 border-b border-slate-800 pb-2">টেম্পারেচার থ্রেশহোল্ড কাস্টমাইজেশন</h3>
+
+                    <!-- Start Temp -->
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-slate-300">চালু হওয়ার তাপমাত্রা (Start Temp):</span>
+                            <span id="start-temp-txt" class="font-bold text-emerald-400">26.0 °C</span>
+                        </div>
+                        <input type="range" id="start-temp-slider" min="20" max="32" step="0.5" value="26.0" oninput="updateAutoCurve()">
+                    </div>
+
+                    <!-- Full Speed Temp -->
+                    <div class="space-y-1 pt-2">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-slate-300">ফুল স্পিড (100%) তাপমাত্রা:</span>
+                            <span id="full-temp-txt" class="font-bold text-rose-400">35.0 °C</span>
+                        </div>
+                        <input type="range" id="full-temp-slider" min="30" max="42" step="0.5" value="35.0" oninput="updateAutoCurve()">
+                    </div>
+
+                    <!-- Hysteresis Anti-Flicker Settings -->
+                    <div class="pt-2 border-t border-slate-800 space-y-2">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <span class="text-xs font-bold text-slate-200">Hysteresis (Anti-Flicker Threshold)</span>
+                                <p class="text-[10px] text-slate-400">তাপমাত্রার ওঠানামায় মোটর সুরক্ষার জন্য বাফার</p>
+                            </div>
+                            <span id="hysteresis-val-badge" class="text-xs font-mono font-bold text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-800/60">±0.5°C</span>
+                        </div>
+                        <input type="range" id="hysteresis-slider" min="0.1" max="2.0" step="0.1" value="0.5" oninput="updateHysteresis(this.value)">
+                    </div>
+
+                    <!-- Assign Target Fans -->
+                    <div class="pt-2 border-t border-slate-800">
+                        <span class="text-xs text-slate-300 block mb-2">কোন ফ্যানে অটো মোড সক্রিয় থাকবে:</span>
+                        <div class="flex gap-4">
+                            <label class="flex items-center gap-2 text-xs text-slate-200 cursor-pointer">
+                                <input type="checkbox" id="auto-fan1-check" checked class="accent-amber-500" onchange="updateAutoCurve()"> ফ্যান ১ (D7)
+                            </label>
+                            <label class="flex items-center gap-2 text-xs text-slate-200 cursor-pointer">
+                                <input type="checkbox" id="auto-fan2-check" class="accent-amber-500" onchange="updateAutoCurve()"> ফ্যান ২ (D8)
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PAGE 5: IR REMOTE STUDIO (TX & RX) -->
+            <section id="page-learning" class="page-content hidden space-y-4">
+                <div class="flex justify-between items-center px-1">
+                    <h2 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-microchip text-purple-400"></i> IR লার্নিং ও ট্রান্সমিশন স্টুডিও
+                    </h2>
+                    <div class="flex items-center gap-2 bg-slate-900 border border-slate-800 px-2 py-1 rounded-xl">
+                        <span class="text-[10px] text-slate-300 font-semibold">সেফটি লক:</span>
+                        <input type="checkbox" id="ir-safety-lock-toggle" onchange="toggleIRSafetyLock(this.checked)" class="accent-amber-500 rounded">
+                    </div>
+                </div>
+
+                <!-- Tabs -->
+                <div class="flex bg-slate-900 p-1 rounded-xl text-xs font-semibold border border-slate-800">
+                    <button id="tab-ir-rx" onclick="switchLearnTab('ir-rx')" class="flex-1 py-2 rounded-lg bg-purple-600 text-white transition-all">IR রিসিভার (D3 RX)</button>
+                    <button id="tab-ir-tx" onclick="switchLearnTab('ir-tx')" class="flex-1 py-2 rounded-lg text-slate-400 transition-all">IR ট্রান্সমিটার (D0 TX)</button>
+                </div>
+
+                <!-- SUB TAB 1: IR RX LEARNING -->
+                <div id="learn-ir-rx-box" class="glass-card-3d rounded-2xl p-4 space-y-4">
+                    <h3 class="text-xs font-bold text-purple-300 uppercase tracking-wider">যেকোনো রিমোট বোতাম শেখান (TV, AC, Fan, Light)</h3>
+
+                    <div>
+                        <label class="text-xs text-slate-300 block mb-1">কমান্ড টার্গেট সিলেক্ট করুন:</label>
+                        <select id="ir-target-select" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-purple-500">
+                            <optgroup label="মাস্টার কন্ট্রোল (Master Commands)">
+                                <option value="master_on">মাস্টার অল অন (Master ALL ON)</option>
+                                <option value="master_off">মাস্টার অল অফ (Master ALL OFF)</option>
+                            </optgroup>
+                            <optgroup label="এসি রিমোট লার্নিং (AC Remote)">
+                                <option value="ac_power">AC Power On/Off Toggle</option>
+                                <option value="ac_temp_plus">AC Temperature (+)</option>
+                                <option value="ac_temp_minus">AC Temperature (-)</option>
+                                <option value="ac_mode">AC Mode (Cool/Fan/Dry)</option>
+                                <option value="ac_fan_speed">AC Fan Speed Cycle</option>
+                            </optgroup>
+                            <optgroup label="টিভি রিমোট লার্নিং (TV Remote)">
+                                <option value="tv_power">TV Power On/Off Toggle</option>
+                                <option value="tv_vol_plus">TV Volume (+)</option>
+                                <option value="tv_vol_minus">TV Volume (-)</option>
+                                <option value="tv_ch_plus">TV Channel (+)</option>
+                                <option value="tv_ch_minus">TV Channel (-)</option>
+                                <option value="tv_mute">TV Mute Toggle</option>
+                            </optgroup>
+                            <optgroup label="লাইট ১ (Light 1)">
+                                <option value="light1_toggle">লাইট ১ - অন/অফ টগল</option>
+                                <option value="light1_dim_up">লাইট ১ - ব্রাইটনেস প্লাস (+)</option>
+                                <option value="light1_dim_down">লাইট ১ - ব্রাইটনেস মাইনাস (-)</option>
+                            </optgroup>
+                            <optgroup label="লাইট ২ (Light 2)">
+                                <option value="light2_toggle">লাইট ২ - অন/অফ টগল</option>
+                                <option value="light2_dim_up">লাইট ২ - ব্রাইটনেস প্লাস (+)</option>
+                                <option value="light2_dim_down">লাইট ২ - ব্রাইটনেস মাইনাস (-)</option>
+                            </optgroup>
+                            <optgroup label="ফ্যান ১ (Fan 1)">
+                                <option value="fan1_toggle">ফ্যান ১ - অন/অফ টগল</option>
+                                <option value="fan1_speed_up">ফ্যান ১ - স্পিড প্লাস (+)</option>
+                                <option value="fan1_speed_down">ফ্যান ১ - স্পিড মাইনাস (-)</option>
+                            </optgroup>
+                            <optgroup label="ফ্যান ২ (Fan 2)">
+                                <option value="fan2_toggle">ফ্যান ২ - অন/অফ টগল</option>
+                                <option value="fan2_speed_up">ফ্যান ২ - স্পিড প্লাস (+)</option>
+                                <option value="fan2_speed_down">ফ্যান ২ - স্পিড মাইনাস (-)</option>
+                            </optgroup>
+                        </select>
+                    </div>
+
+                    <!-- Radar Animation Display -->
+                    <div class="text-center py-4 space-y-3 bg-slate-950/70 rounded-xl border border-slate-800">
+                        <div id="ir-radar" class="w-16 h-16 mx-auto rounded-full bg-purple-950/60 border border-purple-500/40 flex items-center justify-center text-purple-400">
+                            <i id="ir-icon" class="fa-solid fa-tower-broadcast text-2xl"></i>
+                        </div>
+                        <div>
+                            <div id="ir-status-txt" class="text-xs font-bold text-slate-200">লার্নিং শুরু করতে বাটন চাপুন</div>
+                            <div id="ir-hex-code" class="text-xs font-mono text-purple-400 mt-1">HEX Code: -- -- --</div>
+                        </div>
+                        <button onclick="startIRLearning()" id="btn-ir-learn" class="bg-purple-600 hover:bg-purple-500 text-white text-xs px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-purple-600/30">
+                            <i class="fa-solid fa-plug"></i> Start IR Learn
+                        </button>
+                    </div>
+
+                    <!-- Custom Defined IR Button Creator -->
+                    <div class="pt-2 border-t border-slate-800 space-y-2">
+                        <span class="text-xs font-bold text-slate-300 block">কাস্টম IR বাটন যোগ করুন:</span>
+                        <div class="flex gap-2">
+                            <input type="text" id="custom-ir-label" placeholder="যেমন: Sound System Mute" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 focus:outline-none">
+                            <button onclick="addNewCustomIRButtonSlot()" class="bg-purple-700 hover:bg-purple-600 text-white text-xs px-3 py-1.5 rounded-xl font-bold">
+                                + Add Slot
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Saved Learned IR Buttons Grid -->
+                    <div class="space-y-1.5 pt-2">
+                        <div class="flex justify-between items-center border-b border-slate-800 pb-1">
+                            <span class="text-xs font-bold text-slate-300">সংরক্ষিত IR বাটনসমূহ</span>
+                            <span class="text-[10px] text-slate-400">ডিলিট আইকনে ক্লিক করে ডিলিট করুন</span>
+                        </div>
+                        <div id="learned-buttons-container" class="grid grid-cols-1 gap-2 text-xs">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SUB TAB 2: IR TX TRANSMITTER -->
+                <div id="learn-ir-tx-box" class="glass-card-3d rounded-2xl p-4 space-y-4 hidden">
+                    <h3 class="text-xs font-bold text-sky-300 uppercase tracking-wider">IR Coded Signal Transmit (D0 Pin)</h3>
+                    <p class="text-xs text-slate-400">ESP8266 এর D0 পিনে যুক্ত IR LED দিয়ে টিভি বা এসি রিমোটের সংকেত ব্লাস্ট করুন।</p>
+
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-[11px] text-slate-400 block mb-1">HEX Signal String:</label>
+                            <input type="text" id="tx-hex-input" placeholder="0xFF30CF" value="0x00FF6897" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-amber-300 focus:outline-none">
+                        </div>
+                        <button onclick="transmitIRSignal()" class="w-full bg-sky-600 hover:bg-sky-500 text-white text-xs py-2.5 rounded-xl font-bold transition-all">
+                            <i class="fa-solid fa-paper-plane"></i> Test Transmit IR Burst
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PAGE 6: WI-FI, TIMERS & POWER RESTORATION SETTINGS -->
+            <section id="page-settings" class="page-content hidden space-y-4">
+                <div class="flex justify-between items-center px-1">
+                    <h2 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-wifi text-sky-400"></i> ওয়াই-ফাই ও সিস্টেম সেটিংস
+                    </h2>
+                </div>
+
+                <!-- Power Restoration Settings Card -->
+                <div class="glass-card-3d rounded-2xl p-4 space-y-3 border-l-4 border-l-amber-500">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xs font-bold text-amber-300 flex items-center gap-1.5 uppercase">
+                            <i class="fa-solid fa-bolt-lightning text-amber-400"></i> বিদ্যুৎ পুনঃরুদ্ধার মোড (Power Restore)
+                        </h3>
+                        <span class="text-[9px] bg-amber-950 text-amber-300 border border-amber-800/80 px-2 py-0.5 rounded-full font-mono">Memory Lock</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 leading-relaxed">
+                        কারেন্ট চলে যাওয়ার পর আবার কারেন্ট আসলে লোডগুলো কি অবস্থায় চলবে তা সিলেক্ট করুন:
+                    </p>
+
+                    <div class="space-y-2.5 pt-1">
+                        <!-- Light 1 Power Mode -->
+                        <div class="flex justify-between items-center bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
+                            <div>
+                                <span class="text-xs font-bold text-slate-200 block">লাইট ১ (D5)</span>
+                                <span class="text-[10px] text-slate-400">কারেন্ট আসার পর আচরণ</span>
+                            </div>
+                            <select id="power-restore-light1" onchange="updatePowerRestoreMode('light1', this.value)" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-sky-300 font-semibold focus:outline-none">
+                                <option value="PREVIOUS">আগের অবস্থাতেই চলবে</option>
+                                <option value="10MIN_OFF">১০ মিনিট চলে বন্ধ হবে</option>
+                                <option value="ALWAYS_OFF">বন্ধ থাকবে (OFF)</option>
+                                <option value="ALWAYS_ON">চালু হবে (ON)</option>
+                            </select>
+                        </div>
+
+                        <!-- Light 2 Power Mode -->
+                        <div class="flex justify-between items-center bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
+                            <div>
+                                <span class="text-xs font-bold text-slate-200 block">লাইট ২ (D6)</span>
+                                <span class="text-[10px] text-slate-400">কারেন্ট আসার পর আচরণ</span>
+                            </div>
+                            <select id="power-restore-light2" onchange="updatePowerRestoreMode('light2', this.value)" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-sky-300 font-semibold focus:outline-none">
+                                <option value="PREVIOUS">আগের অবস্থাতেই চলবে</option>
+                                <option value="10MIN_OFF">১০ মিনিট চলে বন্ধ হবে</option>
+                                <option value="ALWAYS_OFF">বন্ধ থাকবে (OFF)</option>
+                                <option value="ALWAYS_ON">চালু হবে (ON)</option>
+                            </select>
+                        </div>
+
+                        <!-- Fan 1 Power Mode -->
+                        <div class="flex justify-between items-center bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
+                            <div>
+                                <span class="text-xs font-bold text-slate-200 block">ফ্যান ১ (D7)</span>
+                                <span class="text-[10px] text-slate-400">কারেন্ট আসার পর আচরণ</span>
+                            </div>
+                            <select id="power-restore-fan1" onchange="updatePowerRestoreMode('fan1', this.value)" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-cyan-300 font-semibold focus:outline-none">
+                                <option value="PREVIOUS">আগের অবস্থাতেই চলবে</option>
+                                <option value="10MIN_OFF">১০ মিনিট চলে বন্ধ হবে</option>
+                                <option value="ALWAYS_OFF">বন্ধ থাকবে (OFF)</option>
+                                <option value="ALWAYS_ON">চালু হবে (ON)</option>
+                            </select>
+                        </div>
+
+                        <!-- Fan 2 Power Mode -->
+                        <div class="flex justify-between items-center bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
+                            <div>
+                                <span class="text-xs font-bold text-slate-200 block">ফ্যান ২ (D8)</span>
+                                <span class="text-[10px] text-slate-400">কারেন্ট আসার পর আচরণ</span>
+                            </div>
+                            <select id="power-restore-fan2" onchange="updatePowerRestoreMode('fan2', this.value)" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-cyan-300 font-semibold focus:outline-none">
+                                <option value="PREVIOUS">আগের অবস্থাতেই চলবে</option>
+                                <option value="10MIN_OFF">১০ মিনিট চলে বন্ধ হবে</option>
+                                <option value="ALWAYS_OFF">বন্ধ থাকবে (OFF)</option>
+                                <option value="ALWAYS_ON">চালু হবে (ON)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Enhanced Wi-Fi AP & Live Network Scanner -->
+                <div class="glass-card-3d rounded-2xl p-4 space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-xs font-bold text-sky-300 uppercase">ওয়াই-ফাই স্ক্যান ও কানেক্ট (AP & Online)</h3>
+                        <button onclick="scanWifiNetworks()" class="bg-sky-600/30 hover:bg-sky-600/50 border border-sky-400/40 text-sky-200 px-3 py-1 rounded-xl text-[11px] font-bold flex items-center gap-1.5 transition-all">
+                            <i id="scan-wifi-icon" class="fa-solid fa-arrows-rotate"></i> Scan Networks
+                        </button>
+                    </div>
+                    <p class="text-xs text-slate-400">আশেপাশের উপলব্ধ ওয়াই-ফাই লিস্ট থেকে সিলেক্ট করে নতুন রাউটার কানেক্ট করুন:</p>
+
+                    <!-- Scanned Networks Dropdown / Selection -->
+                    <div class="space-y-2">
+                        <select id="scanned-wifi-list" onchange="onWifiNetworkSelected(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 font-medium focus:outline-none focus:border-sky-500">
+                            <option value="">-- স্ক্যান করতে ওপরের বাটনে চাপুন --</option>
+                        </select>
+                        
+                        <input type="text" id="cfg-ssid" placeholder="Router SSID (বা সিলেক্ট করুন)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100">
+                        <input type="password" id="cfg-pass" placeholder="Password" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100">
+                        
+                        <div class="flex gap-2">
+                            <button onclick="saveWifiToESP('AP')" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-bold py-2 rounded-xl text-xs">Local AP Connect</button>
+                            <button onclick="saveWifiToESP('CLOUD')" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold py-2 rounded-xl text-xs shadow-lg shadow-emerald-600/30">Save to Device</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dedicated Timer Setup Box -->
+                <div class="glass-card-3d rounded-2xl p-4 space-y-3 border-l-4 border-l-emerald-500">
+                    <h3 class="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+                        <i class="fa-solid fa-stopwatch text-emerald-400"></i> কাস্টম টাইমার কন্ট্রোল (Timer Setup)
+                    </h3>
+                    <p class="text-[11px] text-slate-400">কত সময় পরে চালু হবে নাকি বন্ধ হবে তা নির্দিষ্ট করতে নিচে নির্বাচন করুন:</p>
+
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <label class="text-[10px] text-slate-300 block mb-1">ডিভাইস:</label>
+                            <select id="wifi-timer-dev-select" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-2 py-1.5 text-xs text-slate-100 font-semibold">
+                                <option value="light1">লাইট ১ (D5)</option>
+                                <option value="light2">লাইট ২ (D6)</option>
+                                <option value="fan1">ফ্যান ১ (D7)</option>
+                                <option value="fan2">ফ্যান ২ (D8)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-slate-300 block mb-1">টাইমার টাইপ:</label>
+                            <select id="wifi-timer-action-select" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-2 py-1.5 text-xs text-amber-300 font-bold">
+                                <option value="OFF">বন্ধ হবে (Turn OFF)</option>
+                                <option value="ON">চালু হবে (Turn ON)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-slate-300 block mb-1">সময় (মিনিট):</label>
+                            <input type="number" id="wifi-timer-min-input" value="10" min="1" max="1440" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-2 py-1.5 text-xs text-amber-300 font-bold">
+                        </div>
+                    </div>
+                    <button onclick="addTimerFromWifiPage()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold py-2 rounded-xl text-xs transition-all shadow-lg shadow-emerald-600/30">
+                        <i class="fa-solid fa-plus"></i> টাইমার চালু করুন
+                    </button>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Quick Dashboard Timer Modal Popup -->
+        <div id="quick-timer-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex justify-center items-center p-4 hidden">
+            <div class="glass-card-3d bg-slate-900 border border-slate-700 w-full max-w-xs rounded-2xl p-4 space-y-3">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <h3 class="text-xs font-bold text-amber-400 flex items-center gap-1.5"><i class="fa-solid fa-stopwatch"></i> টাইমার সেট করুন (<span id="modal-dev-title">Light</span>)</h3>
+                    <button onclick="closeQuickTimerModal()" class="text-slate-400 hover:text-white text-xs"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                
+                <div class="space-y-2">
+                    <div>
+                        <label class="text-[10px] text-slate-300 block mb-1">অ্যাকশন নির্ধারণ করুন:</label>
+                        <select id="modal-timer-action" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-amber-300 font-bold">
+                            <option value="OFF">সময় শেষে বন্ধ হবে (OFF)</option>
+                            <option value="ON">সময় শেষে চালু হবে (ON)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-slate-300 block mb-1">সময় (মিনিট):</label>
+                        <input type="number" id="modal-timer-min" value="10" min="1" max="1440" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-amber-300 font-bold">
+                    </div>
+                </div>
+
+                <div class="flex gap-2 pt-1">
+                    <button onclick="closeQuickTimerModal()" class="flex-1 bg-slate-800 text-slate-300 text-xs py-2 rounded-xl">বাতিল</button>
+                    <button onclick="confirmQuickTimer()" class="flex-1 bg-amber-600 text-white text-xs py-2 rounded-xl font-bold">টাইমার চালু</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation Bar -->
+        <nav class="absolute bottom-0 left-0 right-0 bg-slate-950/95 backdrop-blur-xl border-t border-slate-800/80 px-2 py-2 z-30">
+            <div class="grid grid-cols-6 gap-1 text-center">
+                <button onclick="navigateTo('dashboard')" id="nav-dashboard" class="nav-btn py-1 text-sky-400 flex flex-col items-center">
+                    <i class="fa-solid fa-house text-base"></i>
+                    <span class="text-[9px] font-semibold mt-0.5">হোম</span>
+                </button>
+                <button onclick="navigateTo('rmt-app')" id="nav-rmt-app" class="nav-btn py-1 text-slate-400 flex flex-col items-center">
+                    <i class="fa-solid fa-mobile-screen-button text-base"></i>
+                    <span class="text-[9px] font-semibold mt-0.5">রিমোট</span>
+                </button>
+                <button onclick="navigateTo('adc-matrix')" id="nav-adc-matrix" class="nav-btn py-1 text-slate-400 flex flex-col items-center">
+                    <i class="fa-solid fa-gamepad text-base"></i>
+                    <span class="text-[9px] font-semibold mt-0.5">ম্যাট্রিক্স</span>
+                </button>
+                <button onclick="navigateTo('auto-temp')" id="nav-auto-temp" class="nav-btn py-1 text-slate-400 flex flex-col items-center">
+                    <i class="fa-solid fa-temperature-half text-base"></i>
+                    <span class="text-[9px] font-semibold mt-0.5">অটো ফ্যান</span>
+                </button>
+                <button onclick="navigateTo('learning')" id="nav-learning" class="nav-btn py-1 text-slate-400 flex flex-col items-center">
+                    <i class="fa-solid fa-microchip text-base"></i>
+                    <span class="text-[9px] font-semibold mt-0.5">IR লার্ন</span>
+                </button>
+                <button onclick="navigateTo('settings')" id="nav-settings" class="nav-btn py-1 text-slate-400 flex flex-col items-center">
+                    <i class="fa-solid fa-wifi text-base"></i>
+                    <span class="text-[9px] font-semibold mt-0.5">ওয়াই-ফাই</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Notification Toast Box -->
+        <div id="toast-box" class="absolute top-16 left-4 right-4 bg-slate-900 border border-sky-500/50 text-sky-200 text-xs px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 transform -translate-y-24 opacity-0 transition-all duration-300 z-50 pointer-events-none">
+            <i class="fa-solid fa-circle-check text-emerald-400 text-sm"></i>
+            <span id="toast-msg">অ্যাকশন সফল হয়েছে</span>
+        </div>
+
+    </div>
+
+    <!-- Complete Multi-tenant Authentication & Network Logic -->
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBu5ENPn_1gNoM56-vfNXteb7asZElU6NQ",
+            authDomain: "joy-mridha7720.firebaseapp.com",
+            databaseURL: "https://joy-mridha7720-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "joy-mridha7720",
+            storageBucket: "joy-mridha7720.firebasestorage.app",
+            messagingSenderId: "82806196985",
+            appId: "1:82806196985:web:bf9c20ebde90e5bda5b028"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+
+        let currentUser = null;
+        let isAdmin = false;
+        let userDbBasePath = "smart_home"; // Default fallback path
+
+        const state = {
+            isIRSafetyLocked: false,
+            zcdActive: false,
+            light1: { state: false, value: 0, powerRestore: 'PREVIOUS' },
+            light2: { state: false, value: 0, powerRestore: 'PREVIOUS' },
+            fan1: { state: false, value: 0, softStart: true, powerRestore: 'PREVIOUS' },
+            fan2: { state: false, value: 0, softStart: true, powerRestore: 'PREVIOUS' },
+            appRmt: {
+                ac: { power: true, temp: 24, mode: 'COOL' },
+                tv: { power: true, volume: 18, channel: 5 }
+            },
+            autoTemp: {
+                enabled: true,
+                simTemp: 29.5,
+                startTemp: 26.0,
+                fullTemp: 35.0,
+                hysteresis: 0.5,
+                fan1: true,
+                fan2: false
+            },
+            learnedIRCodes: {
+                'Master ALL ON': '0xFF0011',
+                'Master ALL OFF': '0xFF0022',
+                'AC Power Toggle': '0x88FA12',
+                'TV Power Toggle': '0x20E019',
+                'Light1 Toggle': '0x10A031'
+            },
+            activeTimers: []
+        };
+
+        let activeModalDevice = null;
+
+        // AUTHENTICATION LOGIC
+        function loginWithGoogle() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            document.getElementById('auth-status').innerText = "গুগল সাইন-ইন প্রসেস হচ্ছে...";
+            auth.signInWithRedirect(provider);
+        }
+
+        function logoutUser() {
+            auth.signOut().then(() => {
+                location.reload();
+            });
+        }
+
+        auth.getRedirectResult().catch((error) => {
+            console.error(error);
+            document.getElementById('auth-status').innerText = "লগইন এরর: " + error.message;
+        });
+
+        auth.onAuthStateChanged((user) => {
+            const overlay = document.getElementById('auth-overlay');
+            if (user) {
+                currentUser = user;
+                overlay.classList.add('hidden');
+                
+                // Check if Primary Admin
+                db.ref(`admin/${user.uid}`).once('value').then((snap) => {
+                    isAdmin = (snap.val() === true);
+                    const roleBadge = document.getElementById('user-role-badge');
+                    
+                    if (isAdmin) {
+                        roleBadge.innerText = "ADMIN MODE";
+                        roleBadge.className = "text-[10px] bg-purple-950/80 text-purple-300 border border-purple-500/30 px-3 py-0.5 rounded-full font-semibold shadow-[0_0_10px_rgba(168,85,247,0.2)]";
+                        userDbBasePath = "smart_home"; // Admin Root Controller
+                    } else {
+                        roleBadge.innerText = "CUSTOMER MODE";
+                        roleBadge.className = "text-[10px] bg-emerald-950/80 text-emerald-300 border border-emerald-500/30 px-3 py-0.5 rounded-full font-semibold shadow-[0_0_10px_rgba(16,185,129,0.2)]";
+                        userDbBasePath = `users/${user.uid}/devices/DEV_DEFAULT/commands`;
+                    }
+
+                    setupDatabaseListeners();
+                }).catch(() => {
+                    userDbBasePath = `users/${user.uid}/devices/DEV_DEFAULT/commands`;
+                    setupDatabaseListeners();
+                });
+
+            } else {
+                overlay.classList.remove('hidden');
+            }
+        });
+
+        // Check Firebase Realtime Connection Status
+        db.ref(".info/connected").on("value", (snap) => {
+            const badge = document.getElementById("conn-status-badge");
+            const dot = document.getElementById("conn-dot");
+            const ping = document.getElementById("conn-ping");
+            if (snap.val() === true) {
+                badge.innerText = "Online (Cloud)";
+                badge.className = "flex items-center gap-1 text-[11px] bg-emerald-950/60 border border-emerald-800/50 px-2.5 py-0.5 rounded-full text-emerald-300 font-semibold";
+                if(dot) dot.className = "relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500";
+                if(ping) ping.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75";
+            } else {
+                badge.innerText = "Offline (AP Mode)";
+                badge.className = "flex items-center gap-1 text-[11px] bg-amber-950/60 border border-amber-800/50 px-2.5 py-0.5 rounded-full text-amber-300 font-semibold";
+                if(dot) dot.className = "relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500";
+                if(ping) ping.className = "hidden";
+            }
+        });
+
+        function setupDatabaseListeners() {
+            // Sync Devices State from Firebase Realtime Database
+            db.ref(userDbBasePath).on("value", (snapshot) => {
+                const data = snapshot.val();
+                if (!data) return;
+
+                ['light1', 'light2', 'fan1', 'fan2'].forEach(dev => {
+                    if (data[dev]) {
+                        state[dev].state = !!data[dev].state;
+                        if (data[dev].value !== undefined) state[dev].value = data[dev].value;
+                        if (data[dev].softStart !== undefined) state[dev].softStart = !!data[dev].softStart;
+                        if (data[dev].powerRestore !== undefined) {
+                            state[dev].powerRestore = data[dev].powerRestore;
+                            const restoreSelect = document.getElementById(`power-restore-${dev}`);
+                            if(restoreSelect) restoreSelect.value = data[dev].powerRestore;
+                        }
+
+                        const toggle = document.getElementById(`${dev}-toggle`);
+                        const slider = document.getElementById(`${dev}-slider`);
+                        const valTxt = document.getElementById(`${dev}-val`);
+                        const softStart = document.getElementById(`${dev}-softstart`);
+
+                        if (toggle) toggle.checked = state[dev].state;
+                        if (slider) slider.value = state[dev].value;
+                        if (valTxt) valTxt.innerText = `${state[dev].value}%`;
+                        if (softStart) softStart.checked = state[dev].softStart;
+
+                        update3DDeviceVisual(dev, state[dev].state, state[dev].value);
+                    }
+                });
+
+                calculateTotalWatts();
+            });
+
+            // Telemetry Stream from ESP8266 Hardware
+            db.ref("telemetry").on("value", (snapshot) => {
+                const t = snapshot.val();
+                if (!t) return;
+                if (t.zcd !== undefined) {
+                    const zcdHz = parseInt(t.zcd);
+                    state.zcdActive = zcdHz > 40;
+                    document.getElementById("zcd-status").innerHTML = `<i class="fa-solid fa-bolt"></i> ${t.zcd}Hz`;
+                    document.getElementById("zcd-hz-badge").innerText = `${t.zcd}Hz`;
+                    updateZcdDimmerCapabilities(state.zcdActive);
+                }
+                if (t.temp !== undefined) {
+                    document.getElementById("temp-display").innerText = `${t.temp}°C`;
+                }
+                if (t.adc !== undefined) {
+                    document.getElementById("adc-live").innerText = `${t.adc} RAW`;
+                    document.getElementById("adc-live-wizard").innerText = `${t.adc} RAW`;
+                }
+            });
+        }
+
+        function updateZcdDimmerCapabilities(hasZcd) {
+            ['fan1', 'fan2'].forEach(fanKey => {
+                const slider = document.getElementById(`${fanKey}-slider`);
+                if(slider) {
+                    slider.disabled = !hasZcd;
+                    slider.style.opacity = hasZcd ? "1" : "0.4";
+                }
+            });
+        }
+
+        function scanWifiNetworks() {
+            const icon = document.getElementById('scan-wifi-icon');
+            if(icon) icon.classList.add('animate-spin');
+            
+            showToast("ওয়াই-ফাই নেটওয়ার্ক স্ক্যান করা হচ্ছে...");
+
+            fetch("http://192.168.4.1/scan")
+                .then(res => res.json())
+                .then(networks => populateWifiList(networks))
+                .catch(() => {
+                    db.ref("wifi_scan/request").set(Date.now());
+                    setTimeout(() => {
+                        db.ref("wifi_scan/results").once("value", (snap) => {
+                            const list = snap.val() || ["Home_Router_5G", "Mridha_Office_WiFi", "TP-Link_Guest"];
+                            populateWifiList(list);
+                        });
+                    }, 2500);
+                })
+                .finally(() => {
+                    if(icon) icon.classList.remove('animate-spin');
+                });
+        }
+
+        function populateWifiList(networks) {
+            const select = document.getElementById('scanned-wifi-list');
+            if(!select) return;
+            select.innerHTML = '<option value="">-- নেটওয়ার্ক সিলেক্ট করুন --</option>';
+            networks.forEach(net => {
+                const ssid = typeof net === 'string' ? net : (net.ssid || net.name);
+                const option = document.createElement('option');
+                option.value = ssid;
+                option.textContent = `📶 ${ssid}`;
+                select.appendChild(option);
+            });
+            showToast("স্ক্যান সম্পন্ন হয়েছে!");
+        }
+
+        function onWifiNetworkSelected(ssid) {
+            if(ssid) {
+                document.getElementById('cfg-ssid').value = ssid;
+            }
+        }
+
+        function saveWifiToESP(mode) {
+            const ssid = document.getElementById("cfg-ssid").value;
+            const pass = document.getElementById("cfg-pass").value;
+            if(!ssid) {
+                showToast("⚠️ SSID দিন বা নির্বাচন করুন!");
+                return;
+            }
+
+            if(mode === 'AP') {
+                fetch(`http://192.168.4.1/save?ssid=${encodeURIComponent(ssid)}&password=${encodeURIComponent(pass)}`)
+                    .then(() => showToast("AP মোডে ওয়াই-ফাই সেভ হয়েছে!"))
+                    .catch(() => showToast("ESP8266 AP (192.168.4.1) এ কানেক্ট করুন"));
+            } else {
+                db.ref("wifi_config").set({ ssid: ssid, pass: pass, timestamp: Date.now() });
+                showToast("ক্লাউডে ওয়াই-ফাই ডেটা সেভ করা হয়েছে!");
+            }
+        }
+
+        function updateFirebaseDevice(devKey, prop, val) {
+            db.ref(`${userDbBasePath}/${devKey}/${prop}`).set(val);
+        }
+
+        function updatePowerRestoreMode(devKey, restoreMode) {
+            state[devKey].powerRestore = restoreMode;
+            updateFirebaseDevice(devKey, 'powerRestore', restoreMode);
+            
+            let label = "আগের অবস্থাতেই চলবে";
+            if(restoreMode === '10MIN_OFF') label = "১০ মিনিট চলে বন্ধ হবে";
+            else if(restoreMode === 'ALWAYS_OFF') label = "সবসময় বন্ধ থাকবে";
+            else if(restoreMode === 'ALWAYS_ON') label = "সবসময় চালু হবে";
+
+            showToast(`${devKey.toUpperCase()} কারেন্ট আসলে: ${label}`);
+        }
+
+        function toggleDevice(devKey) {
+            if (state.isIRSafetyLocked) {
+                showToast("⚠️ IR Safety Lock active!");
+                document.getElementById(`${devKey}-toggle`).checked = state[devKey].state;
+                return;
+            }
+            const newState = !state[devKey].state;
+            state[devKey].state = newState;
+            updateFirebaseDevice(devKey, 'state', newState);
+            showToast(`${devKey.toUpperCase()} ${newState ? 'চালু' : 'বন্ধ'}`);
+        }
+
+        function toggleSoftStart(devKey, checked) {
+            state[devKey].softStart = checked;
+            updateFirebaseDevice(devKey, 'softStart', checked);
+            showToast(`${devKey.toUpperCase()} Soft-Start: ${checked ? 'ON' : 'OFF'}`);
+        }
+
+        function updateSlider(devKey, val) {
+            if (state.isIRSafetyLocked) {
+                showToast("⚠️ IR Safety Lock active!");
+                document.getElementById(`${devKey}-slider`).value = state[devKey].value;
+                return;
+            }
+            const parsedVal = parseInt(val);
+            state[devKey].value = parsedVal;
+            document.getElementById(`${devKey}-val`).innerText = `${parsedVal}%`;
+            updateFirebaseDevice(devKey, 'value', parsedVal);
+        }
+
+        function calculateTotalWatts() {
+            let watts = 0;
+            if (state.light1.state) watts += Math.round(state.light1.value * 0.6);
+            if (state.light2.state) watts += Math.round(state.light2.value * 0.6);
+            if (state.fan1.state) watts += Math.round(state.fan1.value * 0.8);
+            if (state.fan2.state) watts += Math.round(state.fan2.value * 0.8);
+            document.getElementById('power-live').innerText = `${watts} Watts`;
+        }
+
+        function update3DDeviceVisual(key, isOn, val) {
+            const card = document.getElementById(`card-${key}`);
+            const iconBg = document.getElementById(`${key}-icon-bg`);
+            const icon = document.getElementById(`${key}-icon`);
+
+            if (!card || !iconBg) return;
+
+            if (key.startsWith('light')) {
+                if (isOn && val > 0) {
+                    card.classList.add('glow-light-active');
+                    iconBg.className = "w-11 h-11 rounded-2xl bg-amber-500/20 border border-amber-400/60 flex items-center justify-center text-amber-300 transition-all duration-300 shadow-[0_0_15px_rgba(251,191,36,0.5)]";
+                } else {
+                    card.classList.remove('glow-light-active');
+                    iconBg.className = "w-11 h-11 rounded-2xl bg-slate-800/90 border border-slate-700/80 flex items-center justify-center text-slate-400 transition-all duration-300 shadow-inner";
+                }
+            } else if (key.startsWith('fan')) {
+                if (isOn && val > 0) {
+                    card.classList.add('glow-fan-active');
+                    iconBg.className = "w-11 h-11 rounded-2xl bg-cyan-500/20 border border-cyan-400/60 flex items-center justify-center text-cyan-300 transition-all duration-300 shadow-[0_0_15px_rgba(6,182,212,0.5)]";
+                    if (icon) icon.className = val > 50 ? "fa-solid fa-fan text-xl animate-spin-fast text-cyan-300" : "fa-solid fa-fan text-xl animate-spin-slow text-cyan-300";
+                } else {
+                    card.classList.remove('glow-fan-active');
+                    iconBg.className = "w-11 h-11 rounded-2xl bg-slate-800/90 border border-slate-700/80 flex items-center justify-center text-slate-400 transition-all duration-300 shadow-inner";
+                    if (icon) icon.className = "fa-solid fa-fan text-xl text-slate-400";
+                }
+            }
+        }
+
+        function navigateTo(pageId) {
+            document.querySelectorAll('.page-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('text-sky-400');
+                btn.classList.add('text-slate-400');
+            });
+
+            const targetPage = document.getElementById(`page-${pageId}`);
+            if (targetPage) targetPage.classList.remove('hidden');
+
+            const activeNav = document.getElementById(`nav-${pageId}`);
+            if (activeNav) {
+                activeNav.classList.remove('text-slate-400');
+                activeNav.classList.add('text-sky-400');
+            }
+        }
+
+        function quickOpenTimerModal(devKey) {
+            activeModalDevice = devKey;
+            document.getElementById('modal-dev-title').innerText = devKey.toUpperCase();
+            document.getElementById('quick-timer-modal').classList.remove('hidden');
+        }
+
+        function closeQuickTimerModal() {
+            document.getElementById('quick-timer-modal').classList.add('hidden');
+            activeModalDevice = null;
+        }
+
+        function confirmQuickTimer() {
+            if(!activeModalDevice) return;
+            const action = document.getElementById('modal-timer-action').value;
+            const min = parseInt(document.getElementById('modal-timer-min').value);
+
+            state.activeTimers = state.activeTimers.filter(t => t.device !== activeModalDevice);
+
+            state.activeTimers.push({
+                id: Date.now(),
+                device: activeModalDevice,
+                name: activeModalDevice.toUpperCase(),
+                action: action,
+                minLeft: min,
+                secLeft: 0
+            });
+
+            db.ref(`timers/${activeModalDevice}`).set({ action: action, minutes: min, timestamp: Date.now() });
+
+            closeQuickTimerModal();
+            updateHomeDashboardTimerBadges();
+            showToast(`${activeModalDevice.toUpperCase()}-এ ${min} মি: টাইমার সক্রিয়!`);
+        }
+
+        function addTimerFromWifiPage() {
+            const dev = document.getElementById('wifi-timer-dev-select').value;
+            const action = document.getElementById('wifi-timer-action-select').value;
+            const min = parseInt(document.getElementById('wifi-timer-min-input').value);
+
+            state.activeTimers = state.activeTimers.filter(t => t.device !== dev);
+
+            state.activeTimers.push({
+                id: Date.now(),
+                device: dev,
+                name: dev.toUpperCase(),
+                action: action,
+                minLeft: min,
+                secLeft: 0
+            });
+
+            db.ref(`timers/${dev}`).set({ action: action, minutes: min, timestamp: Date.now() });
+
+            updateHomeDashboardTimerBadges();
+            showToast(`${dev.toUpperCase()} - ${min} মি: পরে ${action === 'ON' ? 'চালু' : 'বন্ধ'} হবে`);
+        }
+
+        function updateHomeDashboardTimerBadges() {
+            ['light1', 'light2', 'fan1', 'fan2'].forEach(dev => {
+                const badge = document.getElementById(`${dev}-timer-badge`);
+                const txt = document.getElementById(`${dev}-timer-txt`);
+                const timer = state.activeTimers.find(t => t.device === dev);
+
+                if(badge && txt) {
+                    if(timer) {
+                        badge.classList.remove('hidden');
+                        const m = String(timer.minLeft).padStart(2, '0');
+                        const s = String(timer.secLeft).padStart(2, '0');
+                        txt.innerText = `${m}:${s} (${timer.action})`;
+                    } else {
+                        badge.classList.add('hidden');
+                    }
+                }
+            });
+        }
+
+        function switchApplianceTab(type) {
+            if(type === 'ac') {
+                document.getElementById('rmt-panel-ac').classList.remove('hidden');
+                document.getElementById('rmt-panel-tv').classList.add('hidden');
+                document.getElementById('tab-rmt-ac').className = 'flex-1 py-2 rounded-lg bg-sky-600 text-white transition-all';
+                document.getElementById('tab-rmt-tv').className = 'flex-1 py-2 rounded-lg text-slate-400 transition-all';
+            } else {
+                document.getElementById('rmt-panel-ac').classList.add('hidden');
+                document.getElementById('rmt-panel-tv').classList.remove('hidden');
+                document.getElementById('tab-rmt-ac').className = 'flex-1 py-2 rounded-lg text-slate-400 transition-all';
+                document.getElementById('tab-rmt-tv').className = 'flex-1 py-2 rounded-lg bg-purple-600 text-white transition-all';
+            }
+        }
+
+        function appAcCommand(cmd) {
+            const ac = state.appRmt.ac;
+            let hexSignal = "0x88FA12";
+
+            if(cmd === 'power') {
+                ac.power = !ac.power;
+                document.getElementById('app-ac-power-badge').innerText = ac.power ? 'ON' : 'OFF';
+                document.getElementById('app-ac-power-badge').className = ac.power ? "text-[10px] bg-emerald-950 text-emerald-400 px-2 py-0.5 rounded-full ml-1" : "text-[10px] bg-rose-950 text-rose-400 px-2 py-0.5 rounded-full ml-1";
+                hexSignal = ac.power ? "0x88FA12" : "0x88FA10";
+                showToast(`AC Power: ${ac.power ? 'ON' : 'OFF'}`);
+            } else if(cmd === 'temp_up') {
+                ac.temp = Math.min(30, ac.temp + 1);
+                document.getElementById('app-ac-temp-display').innerText = `${ac.temp} °C`;
+                hexSignal = `0x88FA_${ac.temp}`;
+                showToast(`AC Temp: ${ac.temp}°C`);
+            } else if(cmd === 'temp_down') {
+                ac.temp = Math.max(16, ac.temp - 1);
+                document.getElementById('app-ac-temp-display').innerText = `${ac.temp} °C`;
+                hexSignal = `0x88FA_${ac.temp}`;
+                showToast(`AC Temp: ${ac.temp}°C`);
+            } else if(cmd === 'mode') {
+                const modes = ['COOL', 'DRY', 'FAN', 'AUTO'];
+                let nextIdx = (modes.indexOf(ac.mode) + 1) % modes.length;
+                ac.mode = modes[nextIdx];
+                document.getElementById('app-ac-mode-badge').innerText = `${ac.mode} MODE`;
+                hexSignal = `0x88MODE_${ac.mode}`;
+                showToast(`AC Mode: ${ac.mode}`);
+            } else if(cmd === 'fan') {
+                hexSignal = "0x88FAN_CYCLE";
+                showToast("AC Fan Speed Cycled");
+            }
+
+            db.ref("ir_commands").set({
+                target: "AC",
+                action: cmd,
+                send_hex: hexSignal,
+                timestamp: Date.now()
+            });
+        }
+
+        function appTvCommand(cmd) {
+            const tv = state.appRmt.tv;
+            let hexSignal = "0x20E019";
+
+            if(cmd === 'power') {
+                tv.power = !tv.power;
+                hexSignal = "0x20E019";
+                showToast(`TV Power: ${tv.power ? 'ON' : 'OFF'}`);
+            } else if(cmd === 'vol_up') {
+                tv.volume = Math.min(100, tv.volume + 2);
+                document.getElementById('app-tv-vol-display').innerText = `Vol: ${tv.volume}`;
+                hexSignal = "0x20E0D0";
+                showToast(`TV Volume: ${tv.volume}`);
+            } else if(cmd === 'vol_down') {
+                tv.volume = Math.max(0, tv.volume - 2);
+                document.getElementById('app-tv-vol-display').innerText = `Vol: ${tv.volume}`;
+                hexSignal = "0x20E0E0";
+                showToast(`TV Volume: ${tv.volume}`);
+            } else if(cmd === 'mute') {
+                hexSignal = "0x20E0F0";
+                showToast("TV Muted");
+            } else if(cmd === 'ch_up') {
+                tv.channel++;
+                document.getElementById('app-tv-ch-display').innerText = `CH 0${tv.channel}`;
+                hexSignal = "0x20E000";
+                showToast(`Channel Up -> CH ${tv.channel}`);
+            } else if(cmd === 'ch_down') {
+                tv.channel = Math.max(1, tv.channel - 1);
+                document.getElementById('app-tv-ch-display').innerText = `CH 0${tv.channel}`;
+                hexSignal = "0x20E001";
+                showToast(`Channel Down -> CH ${tv.channel}`);
+            } else if(cmd === 'source') {
+                hexSignal = "0x20E080";
+                showToast("TV Input Source Changed");
+            }
+
+            db.ref("ir_commands").set({
+                target: "TV",
+                action: cmd,
+                send_hex: hexSignal,
+                timestamp: Date.now()
+            });
+        }
+
+        function toggleIRSafetyLock(locked) {
+            state.isIRSafetyLocked = locked;
+            document.getElementById('ir-safety-lock-toggle').checked = locked;
+            const banner = document.getElementById('safety-banner');
+            if(locked) {
+                banner.classList.remove('hidden');
+                showToast("IR Safety Lock ACTIVE!");
+            } else {
+                banner.classList.add('hidden');
+                showToast("IR Safety Lock UNLOCKED.");
+            }
+            db.ref("safety_lock").set(locked);
+        }
+
+        function startAdcCalibrate(type) {
+            showToast(`A0: Calibrating ${type.toUpperCase()} button...`);
+            db.ref(`matrix/calibrate`).set({ action: type, timestamp: Date.now() });
+        }
+
+        function simPhysicalButtonPress(btnType) {
+            if(btnType === 'select') {
+                showToast("A0 Switch: Selected Next Target");
+            } else if(btnType === 'toggle') {
+                showToast("A0 Switch: Device Toggled");
+            } else if(btnType === 'plus') {
+                showToast("A0 Switch: Dimmer Speed (+)");
+            } else if(btnType === 'minus') {
+                showToast("A0 Switch: Dimmer Speed (-)");
+            } else if(btnType === 'timer') {
+                showToast("A0 Switch: +10 Min Timer Added");
+            }
+            db.ref("matrix/btn_press").set({ btn: btnType, timestamp: Date.now() });
+        }
+
+        function toggleAutoTempMode() {
+            state.autoTemp.enabled = document.getElementById('auto-temp-master').checked;
+            showToast(`অটো ফ্যান কার্ভ: ${state.autoTemp.enabled ? 'সক্রিয়' : 'বন্ধ'}`);
+            db.ref("auto_fan/enabled").set(state.autoTemp.enabled);
+        }
+
+        function updateHysteresis(val) {
+            state.autoTemp.hysteresis = parseFloat(val);
+            document.getElementById('hysteresis-val-badge').innerText = `±${state.autoTemp.hysteresis.toFixed(1)}°C`;
+            updateAutoCurve();
+            db.ref("auto_fan/hysteresis").set(state.autoTemp.hysteresis);
+        }
+
+        function updateAutoCurve() {
+            const startT = parseFloat(document.getElementById('start-temp-slider').value);
+            const fullT = parseFloat(document.getElementById('full-temp-slider').value);
+            document.getElementById('start-temp-txt').innerText = `${startT.toFixed(1)} °C`;
+            document.getElementById('full-temp-txt').innerText = `${fullT.toFixed(1)} °C`;
+
+            db.ref("auto_fan/config").set({
+                start_temp: startT,
+                full_temp: fullT
+            });
+        }
+
+        function switchLearnTab(tab) {
+            ['ir-rx', 'ir-tx'].forEach(t => {
+                document.getElementById(`learn-${t}-box`).classList.add('hidden');
+            });
+            document.getElementById(`learn-${tab}-box`).classList.remove('hidden');
+            document.getElementById('tab-ir-rx').className = tab === 'ir-rx' ? 'flex-1 py-2 rounded-lg bg-purple-600 text-white transition-all' : 'flex-1 py-2 rounded-lg text-slate-400 transition-all';
+            document.getElementById('tab-ir-tx').className = tab === 'ir-tx' ? 'flex-1 py-2 rounded-lg text-slate-400 transition-all' : 'flex-1 py-2 rounded-lg text-slate-400 transition-all';
+        }
+
+        function startIRLearning() {
+            toggleIRSafetyLock(true);
+            const statusTxt = document.getElementById('ir-status-txt');
+            const radar = document.getElementById('ir-radar');
+            radar.classList.add('radar-active');
+            statusTxt.innerText = "রিমোটের বোতামটি চাপুন...";
+            
+            db.ref("ir_learning/status").set("LISTENING");
+
+            setTimeout(() => {
+                radar.classList.remove('radar-active');
+                statusTxt.innerText = "IR সিগন্যাল রেকর্ড হয়েছে!";
+                const sampleHex = "0x88FA12";
+                document.getElementById('ir-hex-code').innerText = `HEX Code: ${sampleHex}`;
+                showToast("IR Code Saved to Firebase!");
+
+                const target = document.getElementById('ir-target-select').value;
+                db.ref(`learned_ir/${target}`).set({
+                    code: sampleHex,
+                    timestamp: Date.now()
+                });
+            }, 2000);
+        }
+
+        function addNewCustomIRButtonSlot() {
+            const label = document.getElementById('custom-ir-label').value.trim();
+            if(!label) return;
+            const newCode = '0x' + Math.floor(Math.random()*16777215).toString(16).toUpperCase();
+            state.learnedIRCodes[label] = newCode;
+            document.getElementById('custom-ir-label').value = '';
+            renderLearnedIRButtons();
+            
+            db.ref(`learned_ir/custom_${Date.now()}`).set({
+                label: label,
+                code: newCode
+            });
+
+            showToast(`কাস্টম слот '${label}' যোগ হয়েছে`);
+        }
+
+        function renderLearnedIRButtons() {
+            const container = document.getElementById('learned-buttons-container');
+            if(!container) return;
+            container.innerHTML = Object.entries(state.learnedIRCodes).map(([label, code]) => `
+                <div class="bg-slate-900 border border-slate-800 p-2.5 rounded-xl flex justify-between items-center text-xs">
+                    <div>
+                        <span class="font-bold text-purple-300 block">${label}</span>
+                        <span class="text-[10px] text-amber-400 font-mono">${code}</span>
+                    </div>
+                    <button onclick="deleteIRButton('${label}')" class="w-7 h-7 rounded-lg bg-rose-950/60 border border-rose-800/80 text-rose-400 hover:text-white flex items-center justify-center transition-all">
+                        <i class="fa-solid fa-trash text-xs"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function deleteIRButton(label) {
+            delete state.learnedIRCodes[label];
+            renderLearnedIRButtons();
+            showToast(`IR বাটন '${label}' মুছে ফেলা হয়েছে`);
+        }
+
+        function transmitIRSignal() {
+            const hex = document.getElementById('tx-hex-input').value;
+            db.ref("ir_commands").set({
+                target: "CUSTOM",
+                send_hex: hex,
+                timestamp: Date.now()
+            });
+            showToast(`IR Burst Transmitted: ${hex}`);
+        }
+
+        function startTimerCountdownLoop() {
+            setInterval(() => {
+                state.activeTimers.forEach(t => {
+                    if(t.secLeft > 0) t.secLeft--;
+                    else if(t.minLeft > 0) { t.minLeft--; t.secLeft = 59; }
+                });
+                updateHomeDashboardTimerBadges();
+            }, 1000);
+        }
+
+        function initZcdCanvas() {
+            const canvas = document.getElementById('zcdCanvas');
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            let offset = 0;
+            setInterval(() => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.strokeStyle = state.zcdActive ? '#10b981' : '#f43f5e'; 
+                ctx.lineWidth = 2; 
+                ctx.beginPath();
+                for (let x = 0; x < canvas.width; x++) {
+                    const amp = state.zcdActive ? 15 : 2;
+                    const y = (canvas.height / 2) + Math.sin((x + offset) * 0.1) * amp;
+                    if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                }
+                ctx.stroke(); offset += 2;
+            }, 50);
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast-box');
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.remove('-translate-y-24', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('-translate-y-24', 'opacity-0');
+            }, 2000);
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initZcdCanvas();
+            renderLearnedIRButtons();
+            updateAutoCurve();
+            startTimerCountdownLoop();
+        });
+    </script>
+</body>
+</html>
